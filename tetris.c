@@ -1,56 +1,239 @@
+/*
+ * ============================================================
+ *  TETRIS STACK - NÍVEL NOVATO
+ *  ByteBros - Jogos Educacionais de Lógica e Programação
+ * ============================================================
+ *  Descrição:
+ *    Simula uma fila circular de 5 peças futuras do jogo
+ *    Tetris Stack. O jogador pode:
+ *      - Visualizar a fila atual
+ *      - Jogar (remover) a peça da frente (dequeue)
+ *      - Inserir uma nova peça no final (enqueue)
+ *
+ *  Conceitos trabalhados:
+ *    - Fila circular com arrays
+ *    - Structs para representação de peças
+ *    - Funções e modularização
+ *    - Entrada e saída via terminal
+ * ============================================================
+ */
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-// Desafio Tetris Stack
-// Tema 3 - Integração de Fila e Pilha
-// Este código inicial serve como base para o desenvolvimento do sistema de controle de peças.
-// Use as instruções de cada nível para desenvolver o desafio.
+/* ----------------------------------------------------------
+ *  CONSTANTES
+ * ---------------------------------------------------------- */
+#define CAPACIDADE_FILA 5   /* número máximo de peças na fila */
+#define NUM_TIPOS       4   /* quantidade de tipos de peça    */
 
-int main() {
+/* ----------------------------------------------------------
+ *  STRUCT: Peça
+ *    nome  -> tipo da peça: 'I', 'O', 'T' ou 'L'
+ *    id    -> identificador único de criação
+ * ---------------------------------------------------------- */
+typedef struct {
+    char nome;
+    int  id;
+} Peca;
 
-    // 🧩 Nível Novato: Fila de Peças Futuras
-    //
-    // - Crie uma struct Peca com os campos: tipo (char) e id (int).
-    // - Implemente uma fila circular com capacidade para 5 peças.
-    // - Crie funções como inicializarFila(), enqueue(), dequeue(), filaCheia(), filaVazia().
-    // - Cada peça deve ser gerada automaticamente com um tipo aleatório e id sequencial.
-    // - Exiba a fila após cada ação com uma função mostrarFila().
-    // - Use um menu com opções como:
-    //      1 - Jogar peça (remover da frente)
-    //      0 - Sair
-    // - A cada remoção, insira uma nova peça ao final da fila.
+/* ----------------------------------------------------------
+ *  STRUCT: Fila Circular
+ *    pecas    -> array de peças
+ *    frente   -> índice do primeiro elemento
+ *    tras     -> índice do próximo slot de inserção
+ *    tamanho  -> quantidade atual de elementos
+ * ---------------------------------------------------------- */
+typedef struct {
+    Peca pecas[CAPACIDADE_FILA];
+    int  frente;
+    int  tras;
+    int  tamanho;
+} FilaCircular;
 
+/* contador global de IDs; garante unicidade entre todas as peças geradas */
+static int contadorId = 0;
 
+/* tipos disponíveis de peça */
+static const char tiposPeca[NUM_TIPOS] = { 'I', 'O', 'T', 'L' };
 
-    // 🧠 Nível Aventureiro: Adição da Pilha de Reserva
-    //
-    // - Implemente uma pilha linear com capacidade para 3 peças.
-    // - Crie funções como inicializarPilha(), push(), pop(), pilhaCheia(), pilhaVazia().
-    // - Permita enviar uma peça da fila para a pilha (reserva).
-    // - Crie um menu com opção:
-    //      2 - Enviar peça da fila para a reserva (pilha)
-    //      3 - Usar peça da reserva (remover do topo da pilha)
-    // - Exiba a pilha junto com a fila após cada ação com mostrarPilha().
-    // - Mantenha a fila sempre com 5 peças (repondo com gerarPeca()).
+/* ----------------------------------------------------------
+ *  gerarPeca
+ *    Cria e retorna uma nova peça com tipo aleatório e
+ *    id sequencial único.
+ * ---------------------------------------------------------- */
+Peca gerarPeca(void) {
+    Peca novaPeca;
+    novaPeca.nome = tiposPeca[rand() % NUM_TIPOS];
+    novaPeca.id   = contadorId++;
+    return novaPeca;
+}
 
+/* ----------------------------------------------------------
+ *  inicializarFila
+ *    Prepara a fila vazia e a preenche com CAPACIDADE_FILA
+ *    peças geradas automaticamente.
+ * ---------------------------------------------------------- */
+void inicializarFila(FilaCircular *fila) {
+    fila->frente  = 0;
+    fila->tras    = 0;
+    fila->tamanho = 0;
 
-    // 🔄 Nível Mestre: Integração Estratégica entre Fila e Pilha
-    //
-    // - Implemente interações avançadas entre as estruturas:
-    //      4 - Trocar a peça da frente da fila com o topo da pilha
-    //      5 - Trocar os 3 primeiros da fila com as 3 peças da pilha
-    // - Para a opção 4:
-    //      Verifique se a fila não está vazia e a pilha tem ao menos 1 peça.
-    //      Troque os elementos diretamente nos arrays.
-    // - Para a opção 5:
-    //      Verifique se a pilha tem exatamente 3 peças e a fila ao menos 3.
-    //      Use a lógica de índice circular para acessar os primeiros da fila.
-    // - Sempre valide as condições antes da troca e informe mensagens claras ao usuário.
-    // - Use funções auxiliares, se quiser, para modularizar a lógica de troca.
-    // - O menu deve ficar assim:
-    //      4 - Trocar peça da frente com topo da pilha
-    //      5 - Trocar 3 primeiros da fila com os 3 da pilha
+    /* preenche a fila com peças iniciais */
+    for (int i = 0; i < CAPACIDADE_FILA; i++) {
+        fila->pecas[fila->tras] = gerarPeca();
+        fila->tras              = (fila->tras + 1) % CAPACIDADE_FILA;
+        fila->tamanho++;
+    }
+}
 
+/* ----------------------------------------------------------
+ *  filaCheia
+ *    Retorna 1 se a fila estiver cheia, 0 caso contrário.
+ * ---------------------------------------------------------- */
+int filaCheia(const FilaCircular *fila) {
+    return fila->tamanho == CAPACIDADE_FILA;
+}
+
+/* ----------------------------------------------------------
+ *  filaVazia
+ *    Retorna 1 se a fila estiver vazia, 0 caso contrário.
+ * ---------------------------------------------------------- */
+int filaVazia(const FilaCircular *fila) {
+    return fila->tamanho == 0;
+}
+
+/* ----------------------------------------------------------
+ *  enqueue
+ *    Insere uma nova peça gerada automaticamente no final
+ *    da fila circular.
+ *    Retorna 1 em caso de sucesso, 0 se a fila estiver cheia.
+ * ---------------------------------------------------------- */
+int enqueue(FilaCircular *fila) {
+    if (filaCheia(fila)) {
+        printf("  [AVISO] Fila cheia! Nao e possivel inserir nova peca.\n");
+        return 0;
+    }
+
+    Peca novaPeca        = gerarPeca();
+    fila->pecas[fila->tras] = novaPeca;
+    fila->tras           = (fila->tras + 1) % CAPACIDADE_FILA;
+    fila->tamanho++;
+
+    printf("  Peca [%c %d] inserida no final da fila.\n",
+           novaPeca.nome, novaPeca.id);
+    return 1;
+}
+
+/* ----------------------------------------------------------
+ *  dequeue
+ *    Remove e retorna a peça da frente da fila circular.
+ *    Retorna 1 em caso de sucesso, 0 se a fila estiver vazia.
+ * ---------------------------------------------------------- */
+int dequeue(FilaCircular *fila, Peca *pecaRemovida) {
+    if (filaVazia(fila)) {
+        printf("  [AVISO] Fila vazia! Nao ha pecas para jogar.\n");
+        return 0;
+    }
+
+    *pecaRemovida  = fila->pecas[fila->frente];
+    fila->frente   = (fila->frente + 1) % CAPACIDADE_FILA;
+    fila->tamanho--;
+
+    printf("  Peca [%c %d] jogada (removida da frente).\n",
+           pecaRemovida->nome, pecaRemovida->id);
+    return 1;
+}
+
+/* ----------------------------------------------------------
+ *  exibirFila
+ *    Mostra no terminal todas as peças da fila, da frente
+ *    para o final, no formato: [tipo id]
+ * ---------------------------------------------------------- */
+void exibirFila(const FilaCircular *fila) {
+    printf("\n  === Fila de Pecas (%d/%d) ===\n  ",
+           fila->tamanho, CAPACIDADE_FILA);
+
+    if (filaVazia(fila)) {
+        printf("(fila vazia)\n");
+        return;
+    }
+
+    for (int i = 0; i < fila->tamanho; i++) {
+        int indice = (fila->frente + i) % CAPACIDADE_FILA;
+        printf("[%c %d] ", fila->pecas[indice].nome, fila->pecas[indice].id);
+    }
+    printf("\n");
+}
+
+/* ----------------------------------------------------------
+ *  exibirMenu
+ *    Exibe as opções disponíveis ao jogador.
+ * ---------------------------------------------------------- */
+void exibirMenu(void) {
+    printf("\n  +-----------------------------+\n");
+    printf("  |       TETRIS STACK          |\n");
+    printf("  |       Nivel: Novato         |\n");
+    printf("  +-----------------------------+\n");
+    printf("  | 1 - Jogar peca  (dequeue)   |\n");
+    printf("  | 2 - Inserir peca (enqueue)  |\n");
+    printf("  | 0 - Sair                    |\n");
+    printf("  +-----------------------------+\n");
+    printf("  Escolha: ");
+}
+
+/* ----------------------------------------------------------
+ *  main
+ *    Ponto de entrada: inicializa o jogo e gerencia o loop
+ *    principal de interação com o jogador.
+ * ---------------------------------------------------------- */
+int main(void) {
+    srand((unsigned int)time(NULL)); /* semente para números aleatórios */
+
+    FilaCircular fila;
+    inicializarFila(&fila);
+
+    printf("\n  Bem-vindo ao TETRIS STACK - Nivel Novato!\n");
+    printf("  Fila inicializada com %d pecas.\n", CAPACIDADE_FILA);
+    exibirFila(&fila);
+
+    int opcao;
+    Peca pecaJogada;
+
+    do {
+        exibirMenu();
+        if (scanf("%d", &opcao) != 1) {
+            /* descarta entrada inválida */
+            while (getchar() != '\n');
+            opcao = -1;
+        }
+
+        printf("\n");
+
+        switch (opcao) {
+            case 1: /* jogar peça: remove da frente */
+                dequeue(&fila, &pecaJogada);
+                break;
+
+            case 2: /* inserir nova peça: adiciona no final */
+                enqueue(&fila);
+                break;
+
+            case 0: /* encerrar o programa */
+                printf("  Encerrando o jogo. Ate logo!\n");
+                break;
+
+            default:
+                printf("  [ERRO] Opcao invalida. Tente novamente.\n");
+                break;
+        }
+
+        if (opcao != 0) {
+            exibirFila(&fila);
+        }
+
+    } while (opcao != 0);
 
     return 0;
 }
-
